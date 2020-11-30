@@ -1,0 +1,6 @@
+# Format: Either single date or date range in the formats
+#   2020-09-01
+#   2020-09-01 - 2020-09-03
+# Comments can be marked with '#'
+#
+# Copy this file to your timewarrior db directory, usually ~/.timewarrior
