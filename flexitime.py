@@ -1,45 +1,15 @@
 #!/usr/bin/env python3
 
 import logging
-#logging.basicConfig(level=logging.DEBUG)
-
 from argparse import ArgumentParser
-from datetime import datetime, timedelta, timezone, date
+from datetime import timedelta, datetime, timezone
 import json
-import os
 from pprint import pprint
 import re
-import sys
+from gen_tools import format_timedelta, get_script_path, parse_timew_config, parse_ext_config, retrieve_records, get_report_bounds
 
 logger = logging.getLogger(__name__)
 
-def format_timedelta(delta):
-    hours, rem = divmod(delta.total_seconds(), 3600)
-    minutes = round(rem / 60, 0)
-    return f'{int(hours):02}:{int(minutes):02}'
-
-def get_script_path():
-    return os.path.dirname(os.path.realpath(__file__))
-
-def parse_ext_config():
-    with open(f'{get_script_path()}/ft.conf', 'r') as conffile:
-        return json.load(conffile)
-
-def parse_timew_config():
-    config = {}
-    for line in sys.stdin:
-        if not line.strip():
-            break
-        tokens = line.split(':', maxsplit=1)
-        key = tokens[0]
-        if key in ('temp.report.start', 'temp.report.end'):
-            value = parse_timew_timestamp(tokens[1].strip())
-        elif not tokens[1]:
-            value = None
-        else:
-            value = tokens[1].strip()
-        config[key] = value
-    return config
 
 def parse_freetime(filename):
     free_days = []
@@ -65,37 +35,25 @@ def parse_freetime(filename):
 
 def day_range(start, stop, inclusive=False):
     current = start
-    while current < (stop + timedelta(days=1 if inclusive else 0)):
+    maxdate = datetime.max.replace(tzinfo=timezone.utc)
+    if maxdate - timedelta(days=1) <= stop:
+        end = maxdate - timedelta(days=1)
+    else:
+        end = stop + timedelta(days=1 if inclusive else 0)
+    while current < end:
         yield current
         current += timedelta(days=1)
 
-def parse_timew_timestamp(string):
-    if not string:
-        return None
-    else:
-        dt = datetime.strptime(string, '%Y%m%dT%H%M%SZ')
-        return dt.replace(tzinfo=timezone.utc)
-    
-
-def parse_record(obj):
-    obj['start'] = parse_timew_timestamp(obj['start'])
-    if 'end' in obj and obj['end']:
-        obj['end'] = parse_timew_timestamp(obj['end'])
-    else: 
-        logger.debug(f'parsing empty end for record starting at {obj["start"]}')
-        obj['end'] = datetime.now(tz=timezone.utc)
-    return obj
 
 def main():
-    extconfig = parse_ext_config()
+    logging.basicConfig()
+    extconfig = parse_ext_config('ft.conf')
     config = parse_timew_config()
-    time_records = json.load(sys.stdin, object_hook=parse_record)
+    if config['debug'] == 'on':
+        logging.getLogger().setLevel(logging.DEBUG)
     free_days = parse_freetime(config['temp.db'] + '/freedays.txt')
 
-    relevant_records = filter(lambda x: (x['start'] >= config.get('temp.report.start', datetime.min)    # start date inside report date range
-                                    or x['end'] <= config.get('temp.report.end', datetime.max)),        # end date inside report date range 
-                                    time_records)
-
+    relevant_records = retrieve_records(config)
     day_sums = {}
     for record in relevant_records:
         logger.debug(f'Parsing {record}')
@@ -108,8 +66,7 @@ def main():
         logger.debug(f'diff: {diff}')
         day_sums[start.date()] = day_sums.get(start.date(), timedelta()) + diff
 
-    startdate = config.get('temp.report.start')
-    enddate = config.get('temp.report.end') or datetime.now(tz=timezone.utc)
+    startdate, enddate = get_report_bounds(config)
 
     tolog = timedelta()
     for day in day_range(startdate, enddate):
