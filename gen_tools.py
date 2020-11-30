@@ -47,6 +47,7 @@ def parse_record(obj):
     else: 
         logger.debug(f'parsing empty end for record starting at {obj["start"]}')
         obj['end'] = datetime.now(tz=timezone.utc)
+    obj['tags'] = set(obj['tags'])
     return obj
 
 def get_report_bounds(config):
