@@ -16,7 +16,7 @@ def parse_freetime(filename):
     with open(filename, 'r') as ifp:
         for line in ifp:
             logger.debug(line)
-            if line.startswith('#'):
+            if line.startswith('#') or len(line.strip()) == 0:
                 continue
             datere = '[0-9]{4}-[0-9]{2}-[0-9]{2}'
             rangere = re.compile(f'(?P<start>{datere})( - (?P<end>{datere}))?')
