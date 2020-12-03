@@ -26,8 +26,8 @@ def parse_freetime(filename):
                 raise Exception('no match')
             logger.debug(f'Matched date re with groups: {m.groups()}')
 
-            start = date.fromisoformat(m.group('start'))
-            end = date.fromisoformat(m.group('end')) if m.group('end') else start
+            start = datetime.fromisoformat(m.group('start')).replace(tzinfo=timezone.utc)
+            end = (datetime.fromisoformat(m.group('end')) if m.group('end') else start).replace(tzinfo=timezone.utc)
             free_days.extend(day_range(start, end, True))
 
     logger.debug(f'free days: {free_days}')
