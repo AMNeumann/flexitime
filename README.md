@@ -48,4 +48,7 @@ use ~/.timewarrior/freedays.txt:
    #
    # Copy this file to your timewarrior db directory, usually ~/.timewarrior
 
+## get_holidays
 
+This stand-alone script fetches german bank holidays that can be put into
+freedays.txt directly, i.e. the format matches.
