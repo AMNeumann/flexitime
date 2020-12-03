@@ -3,6 +3,8 @@ logger = logging.getLogger('timew_tools')
 import os.path
 import json
 import sys
+import re
+from pathlib import Path
 from datetime import datetime, timedelta, timezone, date, MINYEAR, MAXYEAR
 
 def format_timedelta(delta):
@@ -10,11 +12,9 @@ def format_timedelta(delta):
     minutes = round(rem / 60, 0)
     return f'{int(hours):02}:{int(minutes):02}'
 
-def get_script_path():
-    return os.path.dirname(os.path.realpath(__file__))
-
 def parse_ext_config(configfile):
-    with open(f'{get_script_path()}/{configfile}', 'r') as conffile:
+    path = config_path() /  Path(configfile)
+    with open(path, 'r') as conffile:
         return json.load(conffile)
 
 def parse_timew_config():
@@ -68,6 +68,58 @@ def retrieve_records(config):
                                     or x['end'] < report_end),         # end date inside report date range 
                                     time_records)
     return relevant_records
+
+def config_path():
+    return Path.home() / Path('.timewarrior')
+
+def parse_freetime():
+    path = config_path() / Path('freedays.txt')
+    free_days = []
+    with open(path, 'r') as ifp:
+        for line in ifp:
+            logger.debug(line)
+            if line.startswith('#') or len(line.strip()) == 0:
+                continue
+            datere = '[0-9]{4}-[0-9]{2}-[0-9]{2}'
+            rangere = re.compile(f'(?P<start>{datere})( - (?P<end>{datere}))?')
+            m = re.match(rangere, line)
+
+            if not m:
+                raise Exception('no match')
+            logger.debug(f'Matched date re with groups: {m.groups()}')
+
+            start = datetime.fromisoformat(m.group('start')).replace(tzinfo=timezone.utc)
+            end = (datetime.fromisoformat(m.group('end')) if m.group('end') else start).replace(tzinfo=timezone.utc)
+            free_days.extend(day_range(start, end, True))
+
+    logger.debug(f'free days: {free_days}')
+    return free_days
+
+def compute_tolog(startdate, enddate):
+    free_days = parse_freetime()
+    times = parse_ext_config('times.conf')['times']
+    tolog = timedelta()
+    for day in day_range(startdate, enddate):
+        if day not in free_days:
+            hours, minutes = times[day.weekday()].split(':')
+            delta = timedelta(hours=int(hours), minutes=int(minutes))
+            logger.debug(f'{day}: Adding {delta}')
+            tolog += delta
+
+    logger.debug(f'computed tolog to {tolog}')
+    return tolog
+
+def day_range(start, stop, inclusive=False):
+    current = start
+    maxdate = datetime.max.replace(tzinfo=timezone.utc)
+    if maxdate - timedelta(days=1) <= stop:
+        end = maxdate - timedelta(days=1)
+    else:
+        end = stop + timedelta(days=1 if inclusive else 0)
+    while current < end:
+        yield current
+        current += timedelta(days=1)
+
 
 if __name__ == '__main__':
     print('not intended to run on its own')
