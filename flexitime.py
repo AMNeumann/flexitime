@@ -5,13 +5,12 @@ from argparse import ArgumentParser
 from datetime import timedelta, datetime, timezone
 import json
 from gen_tools import (format_timedelta,
-        get_script_path,
         parse_timew_config,
         parse_ext_config,
         retrieve_records,
         get_report_bounds,
         parse_freetime,
-        day_range,
+        compute_tolog,
         )
 
 logger = logging.getLogger(__name__)
@@ -25,7 +24,7 @@ def main():
     config = parse_timew_config()
     if config['debug'] == 'on':
         logging.getLogger().setLevel(logging.DEBUG)
-    free_days = parse_freetime(config['temp.db'] + '/freedays.txt')
+    free_days = parse_freetime()
 
     relevant_records = retrieve_records(config)
     day_sums = {}
