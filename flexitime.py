@@ -39,7 +39,7 @@ def main():
         logger.debug(f'diff: {diff}')
         day_sums[start.date()] = day_sums.get(start.date(), timedelta()) + diff
 
-    startdate, enddate = get_report_bounds(config)
+    startdate, enddate = get_report_bounds(config, end_today=True)
     tolog = compute_tolog(startdate, enddate)
     
     logged_total = sum(day_sums.values(), start=timedelta())

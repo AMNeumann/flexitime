@@ -10,6 +10,7 @@ from datetime import datetime, timedelta, timezone, date, MINYEAR, MAXYEAR
 def format_timedelta(delta):
     hours, rem = divmod(delta.total_seconds(), 3600)
     minutes = round(rem / 60, 0)
+    logger.debug(f'Formatting {delta}: {hours}, {rem} hours, {minutes} minutes')
     return f'{int(hours):02}:{int(minutes):02}'
 
 def parse_ext_config(configfile):
@@ -50,9 +51,9 @@ def parse_record(obj):
     obj['tags'] = set(obj['tags'])
     return obj
 
-def get_report_bounds(config):
+def get_report_bounds(config, end_today=False):
     report_start = config.get('temp.report.start') or datetime.min.replace(tzinfo=timezone.utc)
-    report_end = config.get('temp.report.end') or datetime.max.replace(tzinfo=timezone.utc)
+    report_end = config.get('temp.report.end') or (datetime.now(tz=timezone.utc) if end_today else datetime.max.replace(tzinfo=timezone.utc))
     return (report_start, report_end)
 
 def retrieve_records(config):
